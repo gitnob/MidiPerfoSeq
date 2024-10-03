@@ -17,6 +17,7 @@
 #include "DistrhoPlugin.hpp"
 #include "MidiPerfoSeq.h"
 #include "iostream"
+#include <random>
 #include <queue>
 
 START_NAMESPACE_DISTRHO
@@ -30,7 +31,7 @@ class MidiPerfoSeqPlugin : public Plugin
 {
 public:
     MidiPerfoSeqPlugin()
-    : Plugin(3, 0, 0),b_record(0.0f),b_trigger(0.0f) {}
+    : Plugin(4, 0, 0),b_record(0.0f),b_trigger(0.0f) {}
 
 protected:
     /* --------------------------------------------------------------------------------------------------------
@@ -38,7 +39,6 @@ protected:
 
     /**
      *    Get the plugin label.
-     *    This label is a short restricted name consisting of only _, a-z, A-Z and 0-9 characters.
      */
     const char* getLabel() const override
     {
@@ -109,6 +109,14 @@ protected:
                 parameter.ranges.max = 1.0f;
                 parameter.ranges.def = 0.0f;
                 break;
+            case seqStyle:
+                parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
+                parameter.name       = "Sequencer Style";
+                parameter.symbol     = "seqstyle";
+                parameter.ranges.min = 0.0f;
+                parameter.ranges.max = 2.0f;
+                parameter.ranges.def = 0.0f;
+                break;
             case groupNumber:
                 parameter.hints      = kParameterIsOutput;
                 parameter.name       = "Steps";
@@ -131,8 +139,11 @@ protected:
             case bReset:
                 return b_trigger;
                 break;
+            case seqStyle:
+                return sequencerStyle;
+                break;
             case groupNumber:
-                return lastGroup;
+                return noteOnQueueVector.size();
                 break;
             default:
                 return 0.0;
@@ -146,11 +157,15 @@ protected:
             case bRecord:
                 b_record = (value > 0);
                 activeNoteOnCount = 0;
+                noteOnQueueVectorIndex = 0;  // index auf Null setzen
                 break;
             case bReset:
                 activeNoteOnCount = 0;
-                // lastGroup = 0;
-                while (!noteOnQueue.empty()) noteOnQueue.pop();
+                noteOnQueueVector.clear();
+                noteOnQueueVectorIndex = 0;  // index auf Null setzen
+                break;
+            case seqStyle:
+                sequencerStyle = int(value);
                 break;
             default:
                 break;
@@ -160,9 +175,53 @@ protected:
     /* --------------------------------------------------------------------------------------------------------
      * Audio/MIDI Processing */
 
+
+    /*
+     * Depending on the sequencer type the next index is evaluated from the size of the noteOnQueueVector vector
+     */
+    int getNextSequencerIndex()
+    {
+        switch (sequencerStyle)
+        {
+            case 0:  // forward
+            {
+                noteOnQueueVectorIndex += 1;
+                noteOnQueueVectorIndex %= noteOnQueueVector.size();
+                break;
+            }
+            case 1:  // backward
+            {
+                noteOnQueueVectorIndex += noteOnQueueVector.size();
+                noteOnQueueVectorIndex -= 1;
+                noteOnQueueVectorIndex %= noteOnQueueVector.size();
+                break;
+            }
+            case 2:  // random
+            {
+                noteOnQueueVectorIndex = rand() % noteOnQueueVector.size();
+                break;
+            }
+        }
+        return noteOnQueueVectorIndex;
+    }
+
+    /*
+     * Returns the actual index in the noteOnQueueVector
+     */
+    int getSequencerIndex()
+    {
+        return noteOnQueueVectorIndex;
+    }
+
+
     /**
      *    Run/process function for plugins with MIDI input.
-     *    In this case we just pass-through all MIDI events.
+     *  It collects all midi events during a gate on (any key is pressed), and
+     * saves it in a queue, which itself is stored in an array, which will be incremented,
+     * when a new gate on for all keys appears.
+     * This function is only during recording state.
+     * After recording, a single key event results in a sequence of midi events (single notes or chords).
+     * The sequence is played depending from the sequenceStyle state.
      */
     void run(const float**, float**, uint32_t,
              const MidiEvent* midiEvents, uint32_t midiEventCount) override
@@ -170,13 +229,6 @@ protected:
                  for (uint32_t i=0; i<midiEventCount; ++i)
                  {
                      MidiEvent midiEvent = midiEvents[i];
-                     //std::cout << int(midiEvent.frame) << " time offset (frames)\n";
-                     //std::cout << int(midiEvent.size) << " Bytes used\n";
-                     //std::cout << std::hex << int(midiEvent.data[0]) << ",";
-                     //std::cout << std::hex << int(midiEvent.data[1]) << ",";
-                     //std::cout << std::hex << int(midiEvent.data[2]) << ",";
-                     //std::cout << std::hex << int(midiEvent.data[3]);
-                     //std::cout << "\n";
                      if (midiEvent.size <= midiEvent.kDataSize)
                      {
                          if (b_record)
@@ -186,36 +238,20 @@ protected:
                                  case 0x80:
                                  {
                                      if (activeNoteOnCount > 0) activeNoteOnCount -= 1;
-                                     // std::cout << "NoteOff\n";
-                                     // std::cout << "lastGroup: " << lastGroup << "\n";
                                      break;
                                  }
                                  case 0x90:
                                  {
-                                     // get last used group number
-                                     if (noteOnQueue.empty())
-                                     {
-                                         lastGroup = 0;
-                                     }
-                                     if (activeNoteOnCount == 0) lastGroup += 1;
+                                     if (activeNoteOnCount == 0) noteOnQueueVector.push_back(MidiQueue());
                                      activeNoteOnCount += 1;
-                                     midiQueueEvent mqe;
-                                     mqe.group = lastGroup;
-                                     mqe.event = midiEvent;
-                                     mqe.event.frame = activeNoteOnCount;
-                                     noteOnQueue.push(mqe);
-
-                                     // std::cout << "Queueing in group (" << lastGroup << "): ";
-                                     // std::cout << std::hex << int(midiEvent.data[0]) << ",";
-                                     // std::cout << std::hex << int(midiEvent.data[1]) << ",";
-                                     // std::cout << std::hex << int(midiEvent.data[2]) << "\n";
-                                     // std::cout << "Queue size: " << noteOnQueue.size() << "\n";
+                                     MidiEvent me = midiEvent;
+                                     me.frame = activeNoteOnCount;
+                                     noteOnQueueVector.back().push(me);
 
                                      break;
 
                                  }
                              }
-                             //playQueue.push(midiEvent);
                              writeMidiEvent(midiEvent);
 
                          }
@@ -226,45 +262,46 @@ protected:
                                  case 0x80:
                                  {
                                      if (activeNoteOnCount > 0) activeNoteOnCount -= 1;
-                                     while (!noteOffQueue.empty())
+                                     if ((noteOnQueueVector.size()>0) &&(activeNoteOnCount == 0))
                                      {
-                                         std::cout << writeMidiEvent(noteOffQueue.front()) << "\n";
-                                         //playQueue.push(noteOffQueue.front());
-                                         noteOffQueue.pop();
+                                         for (int i=0;i<noteOnQueueVector.at(getSequencerIndex()).size();i++)
+                                         {
+                                             MidiEvent me = noteOnQueueVector.at(getSequencerIndex()).front();
+                                             me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
+                                             me.frame = uint32_t(i);
+                                             // std::cout << int(me.frame) << " time offset (frames)\n";
+                                             // std::cout << std::hex << int(me.data[0]) << ",";
+                                             // std::cout << std::hex << int(me.data[1]) << ",";
+                                             // std::cout << std::hex << int(me.data[2]);
+                                             // std::cout << "\n";
+                                             writeMidiEvent(me);
+                                             noteOnQueueVector.at(getSequencerIndex()).pop();
+                                             noteOnQueueVector.at(getSequencerIndex()).push(me);
+                                         }
+                                         getNextSequencerIndex();
                                      }
+
                                      break;
                                  }
                                  case 0x90:
                                  {
-                                     // get last used group number
                                      if (activeNoteOnCount == 0)
                                      {
-                                         activeNoteOnCount += 1;
-                                         for (uint16_t i=0;i<noteOnQueue.size();i++)
+                                         if (noteOnQueueVector.size()>0)
                                          {
-                                             // sent midi events in actual group
-                                             midiQueueEvent mqe = noteOnQueue.front();
-                                             actualGroup = mqe.group;
-                                             noteOnQueue.pop();
-                                             noteOnQueue.push(mqe);
-                                             // std::cout << int(mqe.event.frame) << " time offset (frames)\n";
-                                             // std::cout << std::hex << int(mqe.event.data[0]) << ",";
-                                             // std::cout << std::hex << int(mqe.event.data[1]) << ",";
-                                             // std::cout << std::hex << int(mqe.event.data[2]);
-                                             // std::cout << "\n";
-                                             writeMidiEvent(mqe.event);
-                                             //playQueue.push(mqe.event);
-                                             // push NOFF into note off queue
-                                             mqe.event.data[0] = (mqe.event.data[0] & 0x0F) | 0x80;
-                                             noteOffQueue.push(mqe.event);
-                                             int nextGroup = noteOnQueue.front().group;
-                                             if (actualGroup != nextGroup)
+                                             int sindex = getSequencerIndex();
+                                             for (int i=0;i<noteOnQueueVector.at(sindex).size();i++)
                                              {
-                                                 actualGroup = nextGroup;
-                                                 break;  // for loop
+                                                 MidiEvent me = noteOnQueueVector.at(sindex).front();
+                                                 me.frame = uint32_t(i);
+                                                 me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note off
+                                                 writeMidiEvent(me);
+                                                 noteOnQueueVector.at(sindex).pop();
+                                                 noteOnQueueVector.at(sindex).push(me);
                                              }
                                          }
                                      }
+                                     activeNoteOnCount += 1;
                                      break;
 
                                  }
@@ -273,29 +310,25 @@ protected:
 
                      }
                  }
-            }
+             }
 
-             // ------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 private:
-    // midi event queue
-    std::queue<midiQueueEvent> noteOnQueue;
-    std::queue<MidiEvent> noteOffQueue;
-    std::queue<MidiEvent> playQueue;
+    // midi event queue vector
+    typedef std::queue<MidiEvent> MidiQueue;
+    typedef std::vector<MidiQueue> MidiQueueVector;
+    MidiQueueVector noteOnQueueVector;
+    // Actual index in noteOnQueueVector
+    int noteOnQueueVectorIndex = 0;  // initial value
+    // Sequencer Style
+    int sequencerStyle = 0;
     // midi note ON poly counter
     int activeNoteOnCount = 0;
-    // last group number
-    int lastGroup;
-    // actual group number of midi events to be sent
-    int actualGroup = 1;
     // recording switch
     int b_record = 1;
     // trigger
     int b_trigger = 0;
-    // trigger
-    int b_last_trigger = 0;
-    // trigger change event
-    int b_trigger_changed = 0;
     /**
      *    Set our plugin class as non-copyable and add a leak detector just in case.
      */

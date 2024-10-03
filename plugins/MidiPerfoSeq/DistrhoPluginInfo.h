@@ -34,6 +34,7 @@
 enum Parameters {
     bRecord,
     bReset,
+    seqStyle,
     groupNumber,
     parameterCount
 };
