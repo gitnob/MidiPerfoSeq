@@ -15,7 +15,7 @@
  */
 
 #include "DistrhoPlugin.hpp"
-#include "MidiThroughExamplePLugin.h"
+#include "MidiPerfoSeq.h"
 #include "iostream"
 #include <queue>
 
@@ -26,10 +26,10 @@ START_NAMESPACE_DISTRHO
 /**
  * Plugin that demonstrates MIDI output in DPF.
  */
-class MidiThroughExamplePlugin : public Plugin
+class MidiPerfoSeqPlugin : public Plugin
 {
 public:
-    MidiThroughExamplePlugin()
+    MidiPerfoSeqPlugin()
     : Plugin(3, 0, 0),b_record(0.0f),b_trigger(0.0f) {}
 
 protected:
@@ -42,7 +42,7 @@ protected:
      */
     const char* getLabel() const override
     {
-        return "MidiThrough";
+        return "MidiPerfoSeq";
     }
 
     /**
@@ -50,7 +50,7 @@ protected:
      */
     const char* getDescription() const override
     {
-        return "Plugin that demonstrates MIDI output in DPF.";
+        return "Performance oriented midi sequencer plugin";
     }
 
     /**
@@ -58,7 +58,7 @@ protected:
      */
     const char* getMaker() const override
     {
-        return "DISTRHO";
+        return "nobisoft";
     }
 
     /**
@@ -66,7 +66,7 @@ protected:
      */
     const char* getHomePage() const override
     {
-        return "https://github.com/DISTRHO/DPF";
+        return "https://github.com/gitnob/MidiPerfoSeq";
     }
 
     /**
@@ -75,7 +75,7 @@ protected:
      */
     const char* getLicense() const override
     {
-        return "ISC";
+        return "GPLv2";
     }
 
     /**
@@ -179,7 +179,7 @@ protected:
                      //std::cout << "\n";
                      if (midiEvent.size <= midiEvent.kDataSize)
                      {
-                         if (b_record)  // RECORDING switch ON
+                         if (b_record)
                          {
                              switch (midiEvent.data[0] & 0xF0)
                              {
@@ -219,7 +219,7 @@ protected:
                              std::cout << writeMidiEvent(midiEvent) << "\n";
 
                          }
-                         else  // RECORDING switch OFF
+                         else
                          {
                              switch (midiEvent.data[0] & 0xF0)
                              {
@@ -299,7 +299,7 @@ private:
     /**
      *    Set our plugin class as non-copyable and add a leak detector just in case.
      */
-    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiThroughExamplePlugin)
+    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiPerfoSeqPlugin)
 };
 
 /* ------------------------------------------------------------------------------------------------------------
@@ -307,7 +307,7 @@ private:
 
 Plugin* createPlugin()
 {
-    return new MidiThroughExamplePlugin();
+    return new MidiPerfoSeqPlugin();
 }
 
 // -----------------------------------------------------------------------------------------------------------
