@@ -1,2 +1,6 @@
 
 /build
+plugins/DistrhoPluginInfo.h
+plugins/midithrough/.MidiThroughExamplePlugin.cpp.kate-swp
+plugins/MyAmp.cpp
+plugins/MyAmp.h
