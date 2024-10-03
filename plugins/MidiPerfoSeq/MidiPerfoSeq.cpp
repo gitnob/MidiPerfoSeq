@@ -216,7 +216,7 @@ protected:
                                  }
                              }
                              //playQueue.push(midiEvent);
-                             std::cout << writeMidiEvent(midiEvent) << "\n";
+                             writeMidiEvent(midiEvent);
 
                          }
                          else
@@ -247,12 +247,12 @@ protected:
                                              actualGroup = mqe.group;
                                              noteOnQueue.pop();
                                              noteOnQueue.push(mqe);
-                                             std::cout << int(mqe.event.frame) << " time offset (frames)\n";
-                                             std::cout << std::hex << int(mqe.event.data[0]) << ",";
-                                             std::cout << std::hex << int(mqe.event.data[1]) << ",";
-                                             std::cout << std::hex << int(mqe.event.data[2]);
-                                             std::cout << "\n";
-                                             std::cout << writeMidiEvent(mqe.event) << "\n";
+                                             // std::cout << int(mqe.event.frame) << " time offset (frames)\n";
+                                             // std::cout << std::hex << int(mqe.event.data[0]) << ",";
+                                             // std::cout << std::hex << int(mqe.event.data[1]) << ",";
+                                             // std::cout << std::hex << int(mqe.event.data[2]);
+                                             // std::cout << "\n";
+                                             writeMidiEvent(mqe.event);
                                              //playQueue.push(mqe.event);
                                              // push NOFF into note off queue
                                              mqe.event.data[0] = (mqe.event.data[0] & 0x0F) | 0x80;

@@ -6,3 +6,4 @@ plugins/MyAmp.cpp
 plugins/MyAmp.h
 /plugins/midithrough
 *.kate-swp
+*.kdev4
