@@ -9,4 +9,18 @@ struct midiQueueEvent {
 };
 
 
+enum Parameters {
+    bRecord,
+    bReset,
+    seqStyle,
+    groupNumber,
+    parameterCount
+};
+
+enum PortGroups {
+    gSetup,
+    gPitch,
+    portGroupsCount
+};
+
 #endif

@@ -89,6 +89,23 @@ protected:
     /* --------------------------------------------------------------------------------------------------------
      * Init and Internal data, unused in this plugin */
 
+    void initPortGroup(uint32_t groupId, DISTRHO::PortGroup & portGroup) override
+    {
+            switch (groupId)
+            {
+                case gSetup:
+                    portGroup.name = "Setup Sequencer";
+                    portGroup.symbol = "setup";
+                    break;
+                case gPitch:
+                    portGroup.name = "Pitch Control";
+                    portGroup.symbol = "pitch";
+                    break;
+
+
+            }
+    };
+
     void  initParameter(uint32_t index, Parameter& parameter) override
     {
         switch (index)
@@ -100,6 +117,7 @@ protected:
                 parameter.ranges.min = 0.0f;
                 parameter.ranges.max = 1.0f;
                 parameter.ranges.def = 0.0f;
+                parameter.groupId   = gSetup;
                 break;
             case bReset:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsTrigger;
@@ -108,6 +126,7 @@ protected:
                 parameter.ranges.min = 0.0f;
                 parameter.ranges.max = 1.0f;
                 parameter.ranges.def = 0.0f;
+                parameter.groupId   = gSetup;
                 break;
             case seqStyle:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
@@ -116,6 +135,19 @@ protected:
                 parameter.ranges.min = 0.0f;
                 parameter.ranges.max = 2.0f;
                 parameter.ranges.def = 0.0f;
+                parameter.groupId   = gSetup;
+                parameter.enumValues.count = 3;
+                parameter.enumValues.restrictedMode = true;
+                {
+                    ParameterEnumerationValue* const enumValues = new ParameterEnumerationValue[3];
+                    enumValues[0].value = 0.0f;
+                    enumValues[0].label = "Forward";
+                    enumValues[1].value = 1.0f;
+                    enumValues[1].label = "Backward";
+                    enumValues[2].value = 2.0f;
+                    enumValues[2].label = "Random";
+                    parameter.enumValues.values = enumValues;
+                }
                 break;
             case groupNumber:
                 parameter.hints      = kParameterIsOutput;
@@ -156,11 +188,9 @@ protected:
         {
             case bRecord:
                 b_record = (value > 0);
-                activeNoteOnCount = 0;
                 noteOnQueueVectorIndex = 0;  // index auf Null setzen
                 break;
             case bReset:
-                activeNoteOnCount = 0;
                 noteOnQueueVector.clear();
                 noteOnQueueVectorIndex = 0;  // index auf Null setzen
                 break;

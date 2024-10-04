@@ -31,13 +31,4 @@
 #define DISTRHO_PLUGIN_WANT_MIDI_INPUT  1
 #define DISTRHO_PLUGIN_WANT_MIDI_OUTPUT 1
 
-enum Parameters {
-    bRecord,
-    bReset,
-    seqStyle,
-    groupNumber,
-    parameterCount
-};
-
-
 #endif // DISTRHO_PLUGIN_INFO_H_INCLUDED
