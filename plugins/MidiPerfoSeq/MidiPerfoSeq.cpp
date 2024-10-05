@@ -31,7 +31,7 @@ class MidiPerfoSeqPlugin : public Plugin
 {
 public:
     MidiPerfoSeqPlugin()
-    : Plugin(4, 0, 0),b_record(0.0f),b_trigger(0.0f) {}
+    : Plugin(5, 0, 0),b_record(0.0f),b_reset(0.0f) {}
 
 protected:
     /* --------------------------------------------------------------------------------------------------------
@@ -91,19 +91,19 @@ protected:
 
     void initPortGroup(uint32_t groupId, DISTRHO::PortGroup & portGroup) override
     {
-            switch (groupId)
-            {
-                case gSetup:
-                    portGroup.name = "Setup Sequencer";
-                    portGroup.symbol = "setup";
-                    break;
-                case gPitch:
-                    portGroup.name = "Pitch Control";
-                    portGroup.symbol = "pitch";
-                    break;
+        switch (groupId)
+        {
+            case gSetup:
+                portGroup.name = "Setup Sequencer";
+                portGroup.symbol = "setup";
+                break;
+            case gPitch:
+                portGroup.name = "Pitch Control";
+                portGroup.symbol = "pitch";
+                break;
 
 
-            }
+        }
     };
 
     void  initParameter(uint32_t index, Parameter& parameter) override
@@ -132,20 +132,26 @@ protected:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
                 parameter.name       = "Sequencer Style";
                 parameter.symbol     = "seqstyle";
+                parameter.ranges.max = 6.0f;
                 parameter.ranges.min = 0.0f;
-                parameter.ranges.max = 2.0f;
                 parameter.ranges.def = 0.0f;
                 parameter.groupId   = gSetup;
-                parameter.enumValues.count = 3;
+                parameter.enumValues.count = 6;
                 parameter.enumValues.restrictedMode = true;
                 {
-                    ParameterEnumerationValue* const enumValues = new ParameterEnumerationValue[3];
+                    ParameterEnumerationValue* const enumValues = new ParameterEnumerationValue[6];
                     enumValues[0].value = 0.0f;
                     enumValues[0].label = "Forward";
                     enumValues[1].value = 1.0f;
                     enumValues[1].label = "Backward";
                     enumValues[2].value = 2.0f;
-                    enumValues[2].label = "Random";
+                    enumValues[2].label = "Ping Pong";
+                    enumValues[3].value = 3.0f;
+                    enumValues[3].label = "Spiral";
+                    enumValues[4].value = 4.0f;
+                    enumValues[4].label = "Step (2-1)";
+                    enumValues[5].value = 5.0f;
+                    enumValues[5].label = "Random";
                     parameter.enumValues.values = enumValues;
                 }
                 break;
@@ -154,7 +160,15 @@ protected:
                 parameter.name       = "Steps";
                 parameter.symbol     = "groupNumber";
                 parameter.ranges.min = 0.0f;
-                parameter.ranges.max = 128.0f;
+                parameter.ranges.max = float(MAX_NOTE_ON_GROUPS);
+                parameter.ranges.def = 0.0f;
+                break;
+            case actualGroup:
+                parameter.hints      = kParameterIsOutput;
+                parameter.name       = "Steps";
+                parameter.symbol     = "actualGroup";
+                parameter.ranges.min = 0.0f;
+                parameter.ranges.max = float(MAX_NOTE_ON_GROUPS);
                 parameter.ranges.def = 0.0f;
                 break;
             default:
@@ -169,7 +183,7 @@ protected:
                 return b_record;
                 break;
             case bReset:
-                return b_trigger;
+                return b_reset;
                 break;
             case seqStyle:
                 return sequencerStyle;
@@ -177,6 +191,8 @@ protected:
             case groupNumber:
                 return noteOnQueueVector.size();
                 break;
+            case actualGroup:
+                return noteOnQueueVectorIndex+1;
             default:
                 return 0.0;
                 break;
@@ -188,14 +204,17 @@ protected:
         {
             case bRecord:
                 b_record = (value > 0);
-                noteOnQueueVectorIndex = 0;  // index auf Null setzen
+                //noteOnQueueVectorIndex = 0;  // index auf Null setzen
                 break;
             case bReset:
-                noteOnQueueVector.clear();
-                noteOnQueueVectorIndex = 0;  // index auf Null setzen
+                b_reset = (value > 0);
+                //noteOnQueueVector.clear();
+                //noteOnQueueVectorIndex = 0;  // index auf Null setzen
                 break;
             case seqStyle:
                 sequencerStyle = int(value);
+                noteOnQueueVectorIndex=0;
+                sequencerStep=0;
                 break;
             default:
                 break;
@@ -216,22 +235,51 @@ protected:
             case 0:  // forward
             {
                 noteOnQueueVectorIndex += 1;
-                noteOnQueueVectorIndex %= noteOnQueueVector.size();
                 break;
             }
             case 1:  // backward
             {
                 noteOnQueueVectorIndex += noteOnQueueVector.size();
                 noteOnQueueVectorIndex -= 1;
-                noteOnQueueVectorIndex %= noteOnQueueVector.size();
                 break;
             }
-            case 2:  // random
+            case 2:  // ping pong
+            {
+                if (sequencerStep==0) sequencerStep=1;
+                noteOnQueueVectorIndex += sequencerStep;
+                if (noteOnQueueVectorIndex == noteOnQueueVector.size()-1) sequencerStep=-1;
+                if (noteOnQueueVectorIndex <=0) sequencerStep=1;
+                break;
+            }
+            case 3:  // spiral
+            {
+                if (sequencerStep %2)
+                {
+                    noteOnQueueVectorIndex = sequencerStep/2;
+                } else
+                {
+                    noteOnQueueVectorIndex = (2*noteOnQueueVector.size()-1-sequencerStep)/2;
+                }
+                sequencerStep = (sequencerStep + 1) % noteOnQueueVector.size();
+                break;
+            }
+            case 4:  // random
+            {
+                noteOnQueueVectorIndex = rand() % noteOnQueueVector.size();
+                break;
+            }
+            case 5:  // random
+            {
+                noteOnQueueVectorIndex = rand() % noteOnQueueVector.size();
+                break;
+            }
+            case 6:  // random
             {
                 noteOnQueueVectorIndex = rand() % noteOnQueueVector.size();
                 break;
             }
         }
+        noteOnQueueVectorIndex %= noteOnQueueVector.size();
         return noteOnQueueVectorIndex;
     }
 
@@ -245,13 +293,8 @@ protected:
 
 
     /**
-     *    Run/process function for plugins with MIDI input.
-     *  It collects all midi events during a gate on (any key is pressed), and
-     * saves it in a queue, which itself is stored in an array, which will be incremented,
-     * when a new gate on for all keys appears.
-     * This function is only during recording state.
-     * After recording, a single key event results in a sequence of midi events (single notes or chords).
-     * The sequence is played depending from the sequenceStyle state.
+     *  Run/process function for plugins with MIDI input.
+     *  The logic is a state machine, which is triggered by the lv2 parameter settings.
      */
     void run(const float**, float**, uint32_t,
              const MidiEvent* midiEvents, uint32_t midiEventCount) override
@@ -261,19 +304,85 @@ protected:
                      MidiEvent midiEvent = midiEvents[i];
                      if (midiEvent.size <= midiEvent.kDataSize)
                      {
-                         if (b_record)
+                         // Count the activeNoteOnEvents
+                         switch (midiEvent.data[0] & 0xF0)
                          {
+                             case 0x80: { activeNoteOnCount -= 1; break;}
+                             case 0x90: { activeNoteOnCount += 1; break; }
+                         }
+                         if (activeNoteOnCount < 0) activeNoteOnCount == 0;
+
+                         //std::cout << "machineState: " << machineState << "\n";
+                         //std::cout << "lastMachineState: " << lastMachineState << "\n";
+                         //std::cout << "Tastenanzahl: " << activeNoteOnCount << "\n";
+
+
+                         // playing notes until no key is pressed
+                         int playMode = (machineState==play || machineState==recRequest || (machineState==initRequest && (lastMachineState==play || lastMachineState==recRequest))) && (noteOnQueueVector.size() > 0);
+                         if (playMode)
+                         {
+                             activeNoteOnCount %= noteOnQueueVector.size();
                              switch (midiEvent.data[0] & 0xF0)
                              {
                                  case 0x80:
                                  {
-                                     if (activeNoteOnCount > 0) activeNoteOnCount -= 1;
+                                     if ((noteOnQueueVector.size()>0) &&(activeNoteOnCount == 0))
+                                     {
+                                         for (int i=0;i<noteOnQueueVector.at(getSequencerIndex()).size();i++)
+                                         {
+                                             MidiEvent me = noteOnQueueVector.at(getSequencerIndex()).front();
+                                             me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
+                                             me.frame = uint32_t(i);
+                                             writeMidiEvent(me);
+                                             noteOnQueueVector.at(getSequencerIndex()).pop();
+                                             noteOnQueueVector.at(getSequencerIndex()).push(me);
+                                         }
+                                         getNextSequencerIndex();
+                                     }
                                      break;
                                  }
                                  case 0x90:
                                  {
-                                     if (activeNoteOnCount == 0) noteOnQueueVector.push_back(MidiQueue());
-                                     activeNoteOnCount += 1;
+                                     if (activeNoteOnCount == 1)
+                                     {
+                                         if (noteOnQueueVector.size()>0)
+                                         {
+                                             int sindex = getSequencerIndex();
+                                             for (int i=0;i<noteOnQueueVector.at(sindex).size();i++)
+                                             {
+                                                 MidiEvent me = noteOnQueueVector.at(sindex).front();
+                                                 me.frame = uint32_t(i);
+                                                 me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note on
+                                                 writeMidiEvent(me);
+                                                 noteOnQueueVector.at(sindex).pop();
+                                                 noteOnQueueVector.at(sindex).push(me);
+                                             }
+                                         }
+                                     }
+                                     break;
+                                 }
+                                 default:
+                                     writeMidiEvent(midiEvent);
+                             }
+
+                         }
+
+                         // through all midi events, when no notes are in the queue array.
+                         int throughMode = (machineState==play || machineState==recRequest || (machineState==initRequest && (lastMachineState==play || lastMachineState==recRequest))) && (noteOnQueueVector.size() == 0);
+                         if (throughMode)
+                         {
+                             writeMidiEvent(midiEvent);
+                         }
+
+                         // recording notes until state logic isn't satisfied
+                         int recMode = (machineState==rec || machineState==playRequest || (machineState==initRequest && (lastMachineState==rec || lastMachineState==playRequest)));
+                         if (recMode)
+                         {
+                             switch (midiEvent.data[0] & 0xF0)
+                             {
+                                 case 0x90:
+                                 {
+                                     if (activeNoteOnCount == 1  && noteOnQueueVector.size()<MAX_NOTE_ON_GROUPS) noteOnQueueVector.push_back(MidiQueue());
                                      MidiEvent me = midiEvent;
                                      me.frame = activeNoteOnCount;
                                      noteOnQueueVector.back().push(me);
@@ -285,66 +394,64 @@ protected:
                              writeMidiEvent(midiEvent);
 
                          }
-                         else
-                         {
-                             switch (midiEvent.data[0] & 0xF0)
-                             {
-                                 case 0x80:
-                                 {
-                                     if (activeNoteOnCount > 0) activeNoteOnCount -= 1;
-                                     if ((noteOnQueueVector.size()>0) &&(activeNoteOnCount == 0))
-                                     {
-                                         for (int i=0;i<noteOnQueueVector.at(getSequencerIndex()).size();i++)
-                                         {
-                                             MidiEvent me = noteOnQueueVector.at(getSequencerIndex()).front();
-                                             me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
-                                             me.frame = uint32_t(i);
-                                             // std::cout << int(me.frame) << " time offset (frames)\n";
-                                             // std::cout << std::hex << int(me.data[0]) << ",";
-                                             // std::cout << std::hex << int(me.data[1]) << ",";
-                                             // std::cout << std::hex << int(me.data[2]);
-                                             // std::cout << "\n";
-                                             writeMidiEvent(me);
-                                             noteOnQueueVector.at(getSequencerIndex()).pop();
-                                             noteOnQueueVector.at(getSequencerIndex()).push(me);
-                                         }
-                                         getNextSequencerIndex();
-                                     }
-
-                                     break;
-                                 }
-                                 case 0x90:
-                                 {
-                                     if (activeNoteOnCount == 0)
-                                     {
-                                         if (noteOnQueueVector.size()>0)
-                                         {
-                                             int sindex = getSequencerIndex();
-                                             for (int i=0;i<noteOnQueueVector.at(sindex).size();i++)
-                                             {
-                                                 MidiEvent me = noteOnQueueVector.at(sindex).front();
-                                                 me.frame = uint32_t(i);
-                                                 me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note off
-                                                 writeMidiEvent(me);
-                                                 noteOnQueueVector.at(sindex).pop();
-                                                 noteOnQueueVector.at(sindex).push(me);
-                                             }
-                                         }
-                                     }
-                                     activeNoteOnCount += 1;
-                                     break;
-
-                                 }
-                             }
-                         }
-
                      }
                  }
+                 // state machine logic
+                 int oldMachineState = machineState;
+                 switch (machineState)
+                 {
+                     case init:
+                     {
+                         if (noteOnQueueVector.size()) noteOnQueueVector.clear();
+                         if (noteOnQueueVector.size()==0) machineState = play;
+                         break;
+                     }
+                     case play:
+                     {
+                         if (b_record == 1) machineState = recRequest;
+                         if (b_reset == 1) machineState = initRequest;
+                         break;
+                     }
+                     case recRequest:
+                     {
+                         if (activeNoteOnCount==0) machineState = rec;
+                         if (b_record == 0) machineState = play;
+                         if (b_reset == 1) machineState = initRequest;
+                         break;
+                     }
+                     case rec:
+                     {
+                         if (b_record == 0) machineState = playRequest;
+                         if (b_reset == 1) machineState = initRequest;
+                         break;
+                     }
+                     case playRequest:
+                     {
+                         if (b_record == 1) machineState = rec;
+                         if (activeNoteOnCount==0) machineState = play;
+                         if (b_reset == 1) machineState = initRequest;
+                         break;
+                     }
+                     case initRequest:
+                     {
+                         if ((b_reset == 0) & (activeNoteOnCount==0))
+                         {
+                             //b_record = 0;
+                             machineState = init;
+                         }
+                         break;
+                     }
+                 }
+                 if (machineState != oldMachineState) lastMachineState=oldMachineState;
+
              }
 
-// ------------------------------------------------------------------------------------------------------
+             // ------------------------------------------------------------------------------------------------------
 
 private:
+    // turing machine state
+    int machineState = init;
+    int lastMachineState = init;
     // midi event queue vector
     typedef std::queue<MidiEvent> MidiQueue;
     typedef std::vector<MidiQueue> MidiQueueVector;
@@ -353,12 +460,14 @@ private:
     int noteOnQueueVectorIndex = 0;  // initial value
     // Sequencer Style
     int sequencerStyle = 0;
+    // sequencer step
+    int sequencerStep = 1;
     // midi note ON poly counter
     int activeNoteOnCount = 0;
     // recording switch
-    int b_record = 1;
+    int b_record = 0;
     // trigger
-    int b_trigger = 0;
+    int b_reset = 0;
     /**
      *    Set our plugin class as non-copyable and add a leak detector just in case.
      */

@@ -3,6 +3,8 @@
 
 #include "DistrhoPlugin.hpp"
 
+const int MAX_NOTE_ON_GROUPS = 128;
+
 struct midiQueueEvent {
     int group;
     MidiEvent event;
@@ -14,6 +16,7 @@ enum Parameters {
     bReset,
     seqStyle,
     groupNumber,
+    actualGroup,
     parameterCount
 };
 
@@ -21,6 +24,16 @@ enum PortGroups {
     gSetup,
     gPitch,
     portGroupsCount
+};
+
+enum MachineState {
+    init,
+    play,
+    recRequest,
+    rec,
+    playRequest,
+    initRequest,
+    stateCount
 };
 
 #endif
