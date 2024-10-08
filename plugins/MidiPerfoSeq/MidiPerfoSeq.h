@@ -4,6 +4,7 @@
 #include "DistrhoPlugin.hpp"
 
 const int MAX_NOTE_ON_GROUPS = 128;
+const int MAX_SEQUENCER_STEPS_SIZE = 16;
 
 struct midiQueueEvent {
     int group;
@@ -15,6 +16,8 @@ enum Parameters {
     bRecord,
     bReset,
     seqStyle,
+    seqStepsUp,
+    seqStepsDown,
     groupNumber,
     actualGroup,
     parameterCount

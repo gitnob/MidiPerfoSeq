@@ -31,7 +31,7 @@ class MidiPerfoSeqPlugin : public Plugin
 {
 public:
     MidiPerfoSeqPlugin()
-    : Plugin(5, 0, 0),b_record(0.0f),b_reset(0.0f) {}
+    : Plugin(7, 0, 0),b_record(0.0f),b_reset(0.0f) {}
 
 protected:
     /* --------------------------------------------------------------------------------------------------------
@@ -155,6 +155,24 @@ protected:
                     parameter.enumValues.values = enumValues;
                 }
                 break;
+            case seqStepsUp:
+                parameter.hints      = kParameterIsAutomatable;
+                parameter.name       = "Sequencer Steps Up";
+                parameter.symbol     = "seqStepsUp";
+                parameter.ranges.min = 1.0f;
+                parameter.ranges.max = float(MAX_SEQUENCER_STEPS_SIZE);
+                parameter.ranges.def = 1.0f;
+                parameter.groupId   = gSetup;
+                break;
+            case seqStepsDown:
+                parameter.hints      = kParameterIsAutomatable;
+                parameter.name       = "Sequencer Steps Down";
+                parameter.symbol     = "seqStepsDown";
+                parameter.ranges.min = 1.0f;
+                parameter.ranges.max = float(MAX_SEQUENCER_STEPS_SIZE);
+                parameter.ranges.def = 1.0f;
+                parameter.groupId   = gSetup;
+                break;
             case groupNumber:
                 parameter.hints      = kParameterIsOutput;
                 parameter.name       = "Steps";
@@ -188,6 +206,12 @@ protected:
             case seqStyle:
                 return sequencerStyle;
                 break;
+            case seqStepsUp:
+                return sequencerSubStepsUp;
+                break;
+            case seqStepsDown:
+                return sequencerSubStepsDown;
+                break;
             case groupNumber:
                 return noteOnQueueVector.size();
                 break;
@@ -215,6 +239,19 @@ protected:
                 sequencerStyle = int(value);
                 noteOnQueueVectorIndex=0;
                 sequencerStep=0;
+                sequencerSubStep=0;
+                break;
+            case seqStepsUp:
+                sequencerSubStepsUp = int(value);
+                noteOnQueueVectorIndex=0;
+                sequencerStep=0;
+                sequencerSubStep=0;
+                break;
+            case seqStepsDown:
+                sequencerSubStepsDown = int(value);
+                noteOnQueueVectorIndex=0;
+                sequencerStep=0;
+                sequencerSubStep=0;
                 break;
             default:
                 break;
@@ -263,9 +300,15 @@ protected:
                 sequencerStep = (sequencerStep + 1) % noteOnQueueVector.size();
                 break;
             }
-            case 4:  // random
+            case 4:  // +sequencerSubStepsUp -sequencerSubStepsDown
             {
-                noteOnQueueVectorIndex = rand() % noteOnQueueVector.size();
+                if (sequencerSubStep<sequencerSubStepsUp)
+                    noteOnQueueVectorIndex += 1;
+                else
+                    noteOnQueueVectorIndex -= sequencerSubStepsDown;
+                sequencerSubStep += 1;
+                sequencerSubStep %= sequencerSubStepsUp;
+                noteOnQueueVectorIndex += MAX_SEQUENCER_STEPS_SIZE * noteOnQueueVector.size();
                 break;
             }
             case 5:  // random
@@ -462,6 +505,11 @@ private:
     int sequencerStyle = 0;
     // sequencer step
     int sequencerStep = 1;
+    // sequencer substep counter and step size
+    int sequencerSubStep = 0;
+    int sequencerSubStepsUp = 2;
+    int sequencerSubStepsDown = 1;
+
     // midi note ON poly counter
     int activeNoteOnCount = 0;
     // recording switch
