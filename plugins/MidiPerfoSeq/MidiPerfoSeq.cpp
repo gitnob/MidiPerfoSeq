@@ -149,14 +149,14 @@ protected:
                     enumValues[3].value = 3.0f;
                     enumValues[3].label = "Spiral";
                     enumValues[4].value = 4.0f;
-                    enumValues[4].label = "Step (2-1)";
+                    enumValues[4].label = "Step (+up-down)";
                     enumValues[5].value = 5.0f;
                     enumValues[5].label = "Random";
                     parameter.enumValues.values = enumValues;
                 }
                 break;
             case seqStepsUp:
-                parameter.hints      = kParameterIsAutomatable;
+                parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
                 parameter.name       = "Sequencer Steps Up";
                 parameter.symbol     = "seqStepsUp";
                 parameter.ranges.min = 1.0f;
@@ -165,7 +165,7 @@ protected:
                 parameter.groupId   = gSetup;
                 break;
             case seqStepsDown:
-                parameter.hints      = kParameterIsAutomatable;
+                parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
                 parameter.name       = "Sequencer Steps Down";
                 parameter.symbol     = "seqStepsDown";
                 parameter.ranges.min = 1.0f;
@@ -174,7 +174,7 @@ protected:
                 parameter.groupId   = gSetup;
                 break;
             case groupNumber:
-                parameter.hints      = kParameterIsOutput;
+                parameter.hints      = kParameterIsOutput+kParameterIsInteger;
                 parameter.name       = "Steps";
                 parameter.symbol     = "groupNumber";
                 parameter.ranges.min = 0.0f;
@@ -182,7 +182,7 @@ protected:
                 parameter.ranges.def = 0.0f;
                 break;
             case actualGroup:
-                parameter.hints      = kParameterIsOutput;
+                parameter.hints      = kParameterIsOutput+kParameterIsInteger;
                 parameter.name       = "Steps";
                 parameter.symbol     = "actualGroup";
                 parameter.ranges.min = 0.0f;
@@ -302,7 +302,7 @@ protected:
             }
             case 4:  // +sequencerSubStepsUp -sequencerSubStepsDown
             {
-                if (sequencerSubStep<sequencerSubStepsUp)
+                if (sequencerSubStep<sequencerSubStepsUp-1)
                     noteOnQueueVectorIndex += 1;
                 else
                     noteOnQueueVectorIndex -= sequencerSubStepsDown;
