@@ -435,7 +435,8 @@ protected:
                          int playMode = (machineState==play || machineState==recRequest || (machineState==initRequest && (lastMachineState==play || lastMachineState==recRequest))) && (noteOnQueueVector.size() > 0);
                          if (playMode)
                          {
-                             activeNoteOnCount %= noteOnQueueVector.size();
+                             //activeNoteOnCount %= noteOnQueueVector.size();
+                             if (((midiEvent.data[0] & 0xF0) == 0x90) && midiEvent.data[2] == 0) midiEvent.data[0] = (midiEvent.data[0] & 0x0F) + 0x80;
                              switch (midiEvent.data[0] & 0xF0)
                              {
                                  case 0x80:
@@ -478,7 +479,8 @@ protected:
                                      break;
                                  }
                                  default:
-                                     writeMidiEvent(midiEvent);
+                                     // writeMidiEvent(midiEvent);
+                                     break;
                              }
 
                          }
