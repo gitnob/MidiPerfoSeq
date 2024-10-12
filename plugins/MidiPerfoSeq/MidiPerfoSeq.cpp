@@ -449,7 +449,7 @@ protected:
                                              noteOnQueueVector.at(getSequencerIndex()).pop();
                                              noteOnQueueVector.at(getSequencerIndex()).push(me);
                                              me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
-                                             //me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
+                                             me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
                                              me.frame = uint32_t(i);
                                              writeMidiEvent(me);
                                          }
@@ -471,7 +471,7 @@ protected:
                                                  noteOnQueueVector.at(sindex).push(me);
                                                  me.frame = uint32_t(i);
                                                  me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note on
-                                                 //me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
+                                                 me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
                                                  writeMidiEvent(me);
                                              }
                                          }
