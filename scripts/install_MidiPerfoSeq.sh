@@ -5,14 +5,14 @@ if [ -d "MidiPerfoSeq" ]; then
 	rm -rf "MidiPerfoSeq"
 fi
 
-git clone https://github.com/gitnob/MidiPerfoSeq.git
+git clone --recursive https://github.com/gitnob/MidiPerfoSeq.git
 cd MidiPerfoSeq
 # substitutions
 mkdir build
 cd build
 cmake ..
 make -j3 midiperfoseq-lv2
-cp -r bin/midiperfoseq.lv2 $ZYNTHIAN_PLUGINS_LV2_DIR
+cp -r bin/midiperfoseq.lv2 $ZYNTHIAN_PLUGINS_DIR/lv2
 cd ../..
 
 rm -rf "MidiPerfoSeq"
