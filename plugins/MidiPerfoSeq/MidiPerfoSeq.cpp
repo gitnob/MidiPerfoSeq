@@ -31,7 +31,7 @@ class MidiPerfoSeqPlugin : public Plugin
 {
 public:
     MidiPerfoSeqPlugin()
-    : Plugin(7, 0, 0),b_record(0.0f),b_reset(0.0f) {}
+    : Plugin(10, 0, 0),b_record(0.0f),b_reset(0.0f) {}
 
 protected:
     /* --------------------------------------------------------------------------------------------------------
@@ -93,15 +93,20 @@ protected:
     {
         switch (groupId)
         {
-            case gSetup:
-                portGroup.name = "Setup Sequencer";
-                portGroup.symbol = "setup";
+            case gRecord:
+                portGroup.name = "Recording Setup";
+                portGroup.symbol = "recording";
                 break;
-            case gPitch:
-                portGroup.name = "Pitch Control";
-                portGroup.symbol = "pitch";
+            case gSequencer:
+                portGroup.name = "Sequencer Control";
+                portGroup.symbol = "sequencer";
                 break;
-
+            case gTranspose:
+                portGroup.name = "Key Transpose";
+                portGroup.symbol = "transpose";
+                break;
+            default:
+                break;
 
         }
     };
@@ -117,7 +122,7 @@ protected:
                 parameter.ranges.min = 0.0f;
                 parameter.ranges.max = 1.0f;
                 parameter.ranges.def = 0.0f;
-                parameter.groupId   = gSetup;
+                parameter.groupId   = gRecord;
                 break;
             case bReset:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsTrigger;
@@ -126,7 +131,7 @@ protected:
                 parameter.ranges.min = 0.0f;
                 parameter.ranges.max = 1.0f;
                 parameter.ranges.def = 0.0f;
-                parameter.groupId   = gSetup;
+                parameter.groupId   = gRecord;
                 break;
             case seqStyle:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
@@ -135,7 +140,7 @@ protected:
                 parameter.ranges.max = 6.0f;
                 parameter.ranges.min = 0.0f;
                 parameter.ranges.def = 0.0f;
-                parameter.groupId   = gSetup;
+                parameter.groupId   = gSequencer;
                 parameter.enumValues.count = 6;
                 parameter.enumValues.restrictedMode = true;
                 {
@@ -162,7 +167,7 @@ protected:
                 parameter.ranges.min = 1.0f;
                 parameter.ranges.max = float(MAX_SEQUENCER_STEPS_SIZE);
                 parameter.ranges.def = 1.0f;
-                parameter.groupId   = gSetup;
+                parameter.groupId   = gSequencer;
                 break;
             case seqStepsDown:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
@@ -171,7 +176,34 @@ protected:
                 parameter.ranges.min = 1.0f;
                 parameter.ranges.max = float(MAX_SEQUENCER_STEPS_SIZE);
                 parameter.ranges.def = 1.0f;
-                parameter.groupId   = gSetup;
+                parameter.groupId   = gSequencer;
+                break;
+            case transposeSemi:
+                parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
+                parameter.name       = "Transpose Semi";
+                parameter.symbol     = "transposeSemi";
+                parameter.ranges.min = -12.0f;
+                parameter.ranges.max = +12.0f;
+                parameter.ranges.def = 0.0f;
+                parameter.groupId   = gTranspose;
+                break;
+            case transposeKey:
+                parameter.hints      = kParameterIsAutomatable+kParameterIsBoolean;
+                parameter.name       = "Transpose Last Key";
+                parameter.symbol     = "transposeKey";
+                parameter.ranges.min = 0.0f;
+                parameter.ranges.max = 1.0f;
+                parameter.ranges.def = 0.0f;
+                parameter.groupId   = gTranspose;
+                break;
+            case transposeKeyBase:
+                parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
+                parameter.name       = "Transpose Key Base";
+                parameter.symbol     = "transposeKeyBase";
+                parameter.ranges.min = 1.0f;
+                parameter.ranges.max = 127.0f;
+                parameter.ranges.def = 48.0f;
+                parameter.groupId   = gTranspose;
                 break;
             case groupNumber:
                 parameter.hints      = kParameterIsOutput+kParameterIsInteger;
@@ -211,6 +243,15 @@ protected:
                 break;
             case seqStepsDown:
                 return sequencerSubStepsDown;
+                break;
+            case transposeSemi:
+                return transposeSemiNotes;
+                break;
+            case transposeKey:
+                return transposeOnKeys;
+                break;
+            case transposeKeyBase:
+                return transposeBaseKey;
                 break;
             case groupNumber:
                 return noteOnQueueVector.size();
@@ -252,6 +293,15 @@ protected:
                 noteOnQueueVectorIndex=0;
                 sequencerStep=0;
                 sequencerSubStep=0;
+                break;
+            case transposeSemi:
+                transposeSemiNotes = int(value);
+                break;
+            case transposeKey:
+                transposeOnKeys = (value > 0);
+                break;
+            case transposeKeyBase:
+                transposeBaseKey = int(value);
                 break;
             default:
                 break;
@@ -347,18 +397,39 @@ protected:
                      MidiEvent midiEvent = midiEvents[i];
                      if (midiEvent.size <= midiEvent.kDataSize)
                      {
-                         // Count the activeNoteOnEvents
+                         // Count the activeNoteOnEvents and remeber last played Note
                          switch (midiEvent.data[0] & 0xF0)
                          {
-                             case 0x80: { activeNoteOnCount -= 1; break;}
-                             case 0x90: { activeNoteOnCount += 1; break; }
+                             case 0x80:
+                             {
+                                 activeNoteOnCount -= 1;
+                                 break;
+
+                             }
+                             case 0x90:
+                             {
+                                 if (activeNoteOnCount == 0) lastNoteOnEvent = midiEvent;
+                                 activeNoteOnCount += 1;
+                                 break;
+                             default:
+                                 break;
+                             }
                          }
-                         if (activeNoteOnCount < 0) activeNoteOnCount == 0;
+                         if (activeNoteOnCount < 0) activeNoteOnCount = 0;
+                         // calculate transpose value
+                         int transposeNote=transposeSemiNotes;
+                         if (transposeOnKeys)
+                         {
+                             transposeNote = lastNoteOnEvent.data[1] - transposeBaseKey + transposeSemiNotes;
+                         }
 
                          //std::cout << "machineState: " << machineState << "\n";
                          //std::cout << "lastMachineState: " << lastMachineState << "\n";
                          //std::cout << "Tastenanzahl: " << activeNoteOnCount << "\n";
-
+                         // std::cout << "Last Note On: " << int(lastNoteOnEvent.data[1]) << "\n";
+                         // std::cout << "Semi Transpose: " << transposeSemiNotes << "\n";
+                         // std::cout << "Key Transpose ONOFF: " << transposeOnKeys << "\n";
+                         // std::cout << "Key Transpose Base: " << transposeBaseKey << "\n";
 
                          // playing notes until no key is pressed
                          int playMode = (machineState==play || machineState==recRequest || (machineState==initRequest && (lastMachineState==play || lastMachineState==recRequest))) && (noteOnQueueVector.size() > 0);
@@ -374,11 +445,12 @@ protected:
                                          for (int i=0;i<noteOnQueueVector.at(getSequencerIndex()).size();i++)
                                          {
                                              MidiEvent me = noteOnQueueVector.at(getSequencerIndex()).front();
-                                             me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
-                                             me.frame = uint32_t(i);
-                                             writeMidiEvent(me);
                                              noteOnQueueVector.at(getSequencerIndex()).pop();
                                              noteOnQueueVector.at(getSequencerIndex()).push(me);
+                                             me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
+                                             me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
+                                             me.frame = uint32_t(i);
+                                             writeMidiEvent(me);
                                          }
                                          getNextSequencerIndex();
                                      }
@@ -394,11 +466,12 @@ protected:
                                              for (int i=0;i<noteOnQueueVector.at(sindex).size();i++)
                                              {
                                                  MidiEvent me = noteOnQueueVector.at(sindex).front();
-                                                 me.frame = uint32_t(i);
-                                                 me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note on
-                                                 writeMidiEvent(me);
                                                  noteOnQueueVector.at(sindex).pop();
                                                  noteOnQueueVector.at(sindex).push(me);
+                                                 me.frame = uint32_t(i);
+                                                 me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note on
+                                                 me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
+                                                 writeMidiEvent(me);
                                              }
                                          }
                                      }
@@ -509,6 +582,11 @@ private:
     int sequencerSubStep = 0;
     int sequencerSubStepsUp = 2;
     int sequencerSubStepsDown = 1;
+    // transposing
+    MidiEvent lastNoteOnEvent;
+    int transposeSemiNotes = 0;
+    int transposeOnKeys = 0;
+    int transposeBaseKey = 36;
 
     // midi note ON poly counter
     int activeNoteOnCount = 0;

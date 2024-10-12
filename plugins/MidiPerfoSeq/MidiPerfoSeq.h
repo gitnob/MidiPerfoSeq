@@ -18,14 +18,18 @@ enum Parameters {
     seqStyle,
     seqStepsUp,
     seqStepsDown,
+    transposeSemi,
+    transposeKey,
+    transposeKeyBase,
     groupNumber,
     actualGroup,
     parameterCount
 };
 
 enum PortGroups {
-    gSetup,
-    gPitch,
+    gRecord,
+    gSequencer,
+    gTranspose,
     portGroupsCount
 };
 
