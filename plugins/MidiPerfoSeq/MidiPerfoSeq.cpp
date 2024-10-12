@@ -450,7 +450,7 @@ protected:
                                              noteOnQueueVector.at(getSequencerIndex()).push(me);
                                              me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
                                              me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
-                                             me.frame = uint32_t(i);
+                                             //me.frame = uint32_t(i);
                                              writeMidiEvent(me);
                                          }
                                          getNextSequencerIndex();
