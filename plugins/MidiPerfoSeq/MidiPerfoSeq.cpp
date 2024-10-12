@@ -436,6 +436,9 @@ protected:
                          if (playMode)
                          {
                              //activeNoteOnCount %= noteOnQueueVector.size();
+                             std::cerr << "Midinote: " << (midiEvent.data[0] & 0x0F) << ":";
+                             std::cerr                 << (midiEvent.data[1] & 0x7F) << ":";
+                             std::cerr                 << (midiEvent.data[2] & 0x7F) << "\n";
                              if (((midiEvent.data[0] & 0xF0) == 0x90) && midiEvent.data[2] == 0) midiEvent.data[0] = (midiEvent.data[0] & 0x0F) + 0x80;
                              switch (midiEvent.data[0] & 0xF0)
                              {
