@@ -469,7 +469,7 @@ protected:
                                                  MidiEvent me = noteOnQueueVector.at(sindex).front();
                                                  noteOnQueueVector.at(sindex).pop();
                                                  noteOnQueueVector.at(sindex).push(me);
-                                                 me.frame = uint32_t(i);
+                                                 //me.frame = uint32_t(i);
                                                  me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note on
                                                  me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
                                                  writeMidiEvent(me);
