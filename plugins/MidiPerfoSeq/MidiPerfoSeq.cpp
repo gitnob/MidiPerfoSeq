@@ -313,6 +313,7 @@ protected:
                 b_reset = (value > 0);
                 noteOnQueueVector.clear();
                 noteOnQueueVectorIndex = 0;  // index auf Null setzen
+                activeNoteOnCount=0;
                 break;
             case seqStyle:
                 sequencerStyle = int(value);
@@ -340,6 +341,7 @@ protected:
                 break;
             case transposeKeyBase:
                 transposeBaseKey = int(value);
+                activeNoteOnCount=0;
                 break;
             default:
                 break;
@@ -440,30 +442,14 @@ protected:
                          {
                              case 0x80:
                              {
-                                 if (transposeOnKeys == 2)
-                                 {
-                                     if ((midiEvent.data[1] & 0x7F) == transposeBaseKey)
-                                         activeNoteOnCount -= 1;
-                                 }
-                                 else
-                                 {
-                                     activeNoteOnCount -= 1;
-                                 }
+                                 activeNoteOnCount -= 1;
                                  break;
 
                              }
                              case 0x90:
                              {
                                  if (activeNoteOnCount == 0) lastNoteOnEvent = midiEvent;
-                                 if (transposeOnKeys == 2)
-                                 {
-                                     if ((midiEvent.data[1] & 0x7F) == transposeBaseKey)
-                                         activeNoteOnCount += 1;
-                                 }
-                                 else
-                                 {
-                                     activeNoteOnCount += 1;
-                                 }
+                                 activeNoteOnCount += 1;
                                  break;
                              default:
                                  break;
@@ -513,7 +499,7 @@ protected:
                                  {
                                      if (activeNoteOnCount == 1)
                                      {
-                                         if (noteOnQueueVector.size()>0)
+                                         if (noteOnQueueVector.size()>0 && (transposeOnKeys<2 || (transposeOnKeys == 2 && (midiEvent.data[1] & 0x7F) == transposeBaseKey)))
                                          {
                                              int sindex = getSequencerIndex();
                                              for (int i=0;i<noteOnQueueVector.at(sindex).size();i++)
