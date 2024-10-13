@@ -498,17 +498,14 @@ protected:
                                  {
                                      if ((noteOnQueueVector.size()>0) &&(activeNoteOnCount == 0))
                                      {
-                                         for (int i=0;i<noteOnQueueVector.at(getSequencerIndex()).size();i++)
+                                         while (noteOffQueue.size()>0)
                                          {
-                                             MidiEvent me = noteOnQueueVector.at(getSequencerIndex()).front();
-                                             noteOnQueueVector.at(getSequencerIndex()).pop();
-                                             noteOnQueueVector.at(getSequencerIndex()).push(me);
+                                             MidiEvent me = noteOffQueue.front();
+                                             noteOffQueue.pop();
                                              me.data[0] = (me.data[0] & 0x0F) + 0x80;  // create a note off
-                                             me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
                                              me.frame = uint32_t(midiEvent.frame);
                                              writeMidiEvent(me);
-                                         }
-                                         getNextSequencerIndex();
+                                         };
                                      }
                                      break;
                                  }
@@ -528,7 +525,9 @@ protected:
                                                  me.data[0] = (me.data[0] & 0x0F) + 0x90;  // create a note on
                                                  me.data[1] = (me.data[1] + 0x100 + transposeNote) % 0x100;
                                                  writeMidiEvent(me);
+                                                 noteOffQueue.push(me);
                                              }
+                                            getNextSequencerIndex();
                                          }
                                      }
                                      break;
@@ -629,6 +628,7 @@ private:
     typedef std::queue<MidiEvent> MidiQueue;
     typedef std::vector<MidiQueue> MidiQueueVector;
     MidiQueueVector noteOnQueueVector;
+    MidiQueue noteOffQueue;
     // Actual index in noteOnQueueVector
     int noteOnQueueVectorIndex = 0;  // initial value
     // Sequencer Style
