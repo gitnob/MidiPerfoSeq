@@ -278,21 +278,21 @@ protected:
                 break;
             case seqStyle:
                 sequencerStyle = int(value);
-                noteOnQueueVectorIndex=0;
-                sequencerStep=0;
-                sequencerSubStep=0;
+                // noteOnQueueVectorIndex=0;
+                // sequencerStep=0;
+                // sequencerSubStep=0;
                 break;
             case seqStepsUp:
                 sequencerSubStepsUp = int(value);
-                noteOnQueueVectorIndex=0;
-                sequencerStep=0;
-                sequencerSubStep=0;
+                // noteOnQueueVectorIndex=0;
+                // sequencerStep=0;
+                // sequencerSubStep=0;
                 break;
             case seqStepsDown:
                 sequencerSubStepsDown = int(value);
-                noteOnQueueVectorIndex=0;
-                sequencerStep=0;
-                sequencerSubStep=0;
+                // noteOnQueueVectorIndex=0;
+                // sequencerStep=0;
+                // sequencerSubStep=0;
                 break;
             case transposeSemi:
                 transposeSemiNotes = int(value);
