@@ -311,8 +311,8 @@ protected:
                 break;
             case bReset:
                 b_reset = (value > 0);
-                //noteOnQueueVector.clear();
-                //noteOnQueueVectorIndex = 0;  // index auf Null setzen
+                noteOnQueueVector.clear();
+                noteOnQueueVectorIndex = 0;  // index auf Null setzen
                 break;
             case seqStyle:
                 sequencerStyle = int(value);
