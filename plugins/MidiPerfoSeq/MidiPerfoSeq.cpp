@@ -188,13 +188,25 @@ protected:
                 parameter.groupId   = gTranspose;
                 break;
             case transposeKey:
-                parameter.hints      = kParameterIsAutomatable+kParameterIsBoolean;
-                parameter.name       = "Transpose Last Key";
+                parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
+                parameter.name       = "Keypress Action";
                 parameter.symbol     = "transposeKey";
                 parameter.ranges.min = 0.0f;
-                parameter.ranges.max = 1.0f;
+                parameter.ranges.max = 2.0f;
                 parameter.ranges.def = 0.0f;
                 parameter.groupId   = gTranspose;
+                parameter.enumValues.count = 3;
+                parameter.enumValues.restrictedMode = true;
+                {
+                    ParameterEnumerationValue* const enumValues = new ParameterEnumerationValue[3];
+                    enumValues[0].value = 0.0f;
+                    enumValues[0].label = "No Transpose";
+                    enumValues[1].value = 1.0f;
+                    enumValues[1].label = "Follow Key";
+                    enumValues[2].value = 2.0f;
+                    enumValues[2].label = "Only One Key";
+                    parameter.enumValues.values = enumValues;
+                }
                 break;
             case transposeKeyBase:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
@@ -298,7 +310,7 @@ protected:
                 transposeSemiNotes = int(value);
                 break;
             case transposeKey:
-                transposeOnKeys = (value > 0);
+                transposeOnKeys = int(value);
                 break;
             case transposeKeyBase:
                 transposeBaseKey = int(value);
@@ -402,14 +414,30 @@ protected:
                          {
                              case 0x80:
                              {
-                                 activeNoteOnCount -= 1;
+                                 if (transposeOnKeys == 2)
+                                 {
+                                     if ((midiEvent.data[1] & 0x7F) == transposeBaseKey)
+                                         activeNoteOnCount -= 1;
+                                 }
+                                 else
+                                 {
+                                     activeNoteOnCount -= 1;
+                                 }
                                  break;
 
                              }
                              case 0x90:
                              {
                                  if (activeNoteOnCount == 0) lastNoteOnEvent = midiEvent;
-                                 activeNoteOnCount += 1;
+                                 if (transposeOnKeys == 2)
+                                 {
+                                     if ((midiEvent.data[1] & 0x7F) == transposeBaseKey)
+                                         activeNoteOnCount += 1;
+                                 }
+                                 else
+                                 {
+                                     activeNoteOnCount += 1;
+                                 }
                                  break;
                              default:
                                  break;
@@ -418,7 +446,7 @@ protected:
                          if (activeNoteOnCount < 0) activeNoteOnCount = 0;
                          // calculate transpose value
                          int transposeNote=transposeSemiNotes;
-                         if (transposeOnKeys)
+                         if (transposeOnKeys == 1)
                          {
                              transposeNote = lastNoteOnEvent.data[1] - transposeBaseKey + transposeSemiNotes;
                          }
@@ -435,8 +463,9 @@ protected:
                          int playMode = (machineState==play || machineState==recRequest || (machineState==initRequest && (lastMachineState==play || lastMachineState==recRequest))) && (noteOnQueueVector.size() > 0);
                          if (playMode)
                          {
-                             //activeNoteOnCount %= noteOnQueueVector.size();
+                             // rewrite note on event with value of 0x00 to a note off event
                              if (((midiEvent.data[0] & 0xF0) == 0x90) && midiEvent.data[2] == 0) midiEvent.data[0] = (midiEvent.data[0] & 0x0F) + 0x80;
+
                              switch (midiEvent.data[0] & 0xF0)
                              {
                                  case 0x80:
