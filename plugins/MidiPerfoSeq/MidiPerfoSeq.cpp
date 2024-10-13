@@ -31,7 +31,20 @@ class MidiPerfoSeqPlugin : public Plugin
 {
 public:
     MidiPerfoSeqPlugin()
-    : Plugin(10, 0, 0),b_record(0.0f),b_reset(0.0f) {}
+    : Plugin(10, 0, 0),b_record(0.0f),b_reset(0.0f) {
+        noteNames.push_back(DISTRHO::String("C"));
+        noteNames.push_back(DISTRHO::String("C#"));
+        noteNames.push_back(DISTRHO::String("D"));
+        noteNames.push_back(DISTRHO::String("D#"));
+        noteNames.push_back(DISTRHO::String("E"));
+        noteNames.push_back(DISTRHO::String("F"));
+        noteNames.push_back(DISTRHO::String("F#"));
+        noteNames.push_back(DISTRHO::String("G"));
+        noteNames.push_back(DISTRHO::String("G#"));
+        noteNames.push_back(DISTRHO::String("A"));
+        noteNames.push_back(DISTRHO::String("A#"));
+        noteNames.push_back(DISTRHO::String("B"));
+    }
 
 protected:
     /* --------------------------------------------------------------------------------------------------------
@@ -212,10 +225,23 @@ protected:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsInteger;
                 parameter.name       = "Transpose Key Base";
                 parameter.symbol     = "transposeKeyBase";
-                parameter.ranges.min = 1.0f;
+                parameter.ranges.min = 0.0f;
                 parameter.ranges.max = 127.0f;
-                parameter.ranges.def = 48.0f;
+                parameter.ranges.def = 60.0f;
                 parameter.groupId   = gTranspose;
+                parameter.enumValues.count = 128;
+                parameter.enumValues.restrictedMode = true;
+                {
+                    ParameterEnumerationValue* const enumValues = new ParameterEnumerationValue[128];
+                    for (int i=0;i<128;i++)
+                    {
+                        enumValues[i].value = float(i);
+                        int iname = i%12;
+                        int iOctave = (i-iname)/12-2;
+                        enumValues[i].label = noteNames[iname]+DISTRHO::String(iOctave);
+                    }
+                    parameter.enumValues.values = enumValues;
+                }
                 break;
             case groupNumber:
                 parameter.hints      = kParameterIsOutput+kParameterIsInteger;
@@ -625,6 +651,9 @@ private:
     int b_record = 0;
     // trigger
     int b_reset = 0;
+    // note noteNames
+    typedef std::vector<DISTRHO::String> NoteNames;
+    NoteNames noteNames;
     /**
      *    Set our plugin class as non-copyable and add a leak detector just in case.
      */
