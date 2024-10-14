@@ -31,7 +31,7 @@ class MidiPerfoSeqPlugin : public Plugin
 {
 public:
     MidiPerfoSeqPlugin()
-    : Plugin(10, 0, 0),b_record(0.0f),b_reset(0.0f) {
+    : Plugin(11, 0, 0),b_muteplay(0.0f),b_reset(0.0f) {
         noteNames.push_back(DISTRHO::String("C"));
         noteNames.push_back(DISTRHO::String("C#"));
         noteNames.push_back(DISTRHO::String("D"));
@@ -128,6 +128,15 @@ protected:
     {
         switch (index)
         {
+            case bMutePlay:
+                parameter.hints      = kParameterIsAutomatable+kParameterIsBoolean;
+                parameter.name       = "Mute";
+                parameter.symbol     = "muteplay";
+                parameter.ranges.min = 0.0f;
+                parameter.ranges.max = 1.0f;
+                parameter.ranges.def = 0.0f;
+                parameter.groupId   = gRecord;
+                break;
             case bRecord:
                 parameter.hints      = kParameterIsAutomatable+kParameterIsBoolean;
                 parameter.name       = "Recording";
@@ -217,7 +226,7 @@ protected:
                     enumValues[1].value = 1.0f;
                     enumValues[1].label = "Follow Key";
                     enumValues[2].value = 2.0f;
-                    enumValues[2].label = "Only One Key";
+                    enumValues[2].label = "Specific Key";
                     parameter.enumValues.values = enumValues;
                 }
                 break;
@@ -267,6 +276,9 @@ protected:
     {
         switch (index)
         {
+            case bMutePlay:
+                return b_muteplay;
+                break;
             case bRecord:
                 return b_record;
                 break;
@@ -305,6 +317,10 @@ protected:
     {
         switch (index)
         {
+            case bMutePlay:
+                b_muteplay = (value > 0);
+                noteOnQueueVectorIndex = 0;  // index auf Null setzen
+                break;
             case bRecord:
                 b_record = (value > 0);
                 //noteOnQueueVectorIndex = 0;  // index auf Null setzen
@@ -497,7 +513,7 @@ protected:
                                  }
                                  case 0x90:
                                  {
-                                     if (activeNoteOnCount == 1)
+                                     if (activeNoteOnCount == 1 && b_muteplay == 0)
                                      {
                                          if (noteOnQueueVector.size()>0 && (transposeOnKeys<2 || (transposeOnKeys == 2 && (midiEvent.data[1] & 0x7F) == transposeBaseKey)))
                                          {
@@ -633,6 +649,8 @@ private:
 
     // midi note ON poly counter
     int activeNoteOnCount = 0;
+    // bypass toggle
+    int b_muteplay = 0;
     // recording switch
     int b_record = 0;
     // trigger

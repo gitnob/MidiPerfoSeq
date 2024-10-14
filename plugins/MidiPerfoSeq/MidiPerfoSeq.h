@@ -13,6 +13,7 @@ struct midiQueueEvent {
 
 
 enum Parameters {
+    bMutePlay,
     bRecord,
     bReset,
     seqStyle,
